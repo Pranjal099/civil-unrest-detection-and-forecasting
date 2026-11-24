@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from pathlib import Path
 
 from backend.predict import predict_unrest, FEATURES
 from backend.data_processing import load_and_process_data
@@ -15,8 +16,8 @@ st.set_page_config(
 st.markdown("""
 <style>
 .stApp {
-    background-color: #F4F7FB;
-    color: #111827;
+    background-color: #F8FAFC;
+    color: #0F172A;
 }
 
 .block-container {
@@ -24,285 +25,186 @@ st.markdown("""
     padding-bottom: 2rem;
 }
 
-h1, h2, h3 {
-    color: #111827 !important;
-}
-
 [data-testid="stSidebar"] {
-    background-color: #1E293B;
+    background-color: #0F172A;
 }
 
 [data-testid="stSidebar"] * {
-    color: #FFFFFF !important;
-}
-
-[data-testid="stWidgetLabel"] p {
-    color: #374151 !important;
-    font-weight: 500;
-}
-
-[data-testid="stMetric"] {
-    background-color: #FFFFFF;
-    border: 1px solid #E5E7EB;
-    padding: 18px;
-    border-radius: 12px;
-}
-
-div.stButton > button {
-    background-color: #2563EB;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    height: 45px;
-    font-weight: 600;
-}
-
-div.stButton > button:hover {
-    background-color: #1D4ED8;
-    color: white;
+    color: #F8FAFC !important;
 }
 
 .subtitle {
-    color: #64748B;
-    font-size: 15px;
-}
-
-hr {
-    border-color: #D1D5DB;
+    color: #475569;
+    font-size: 1.05rem;
+    margin-bottom: 1.5rem;
 }
 </style>
 """, unsafe_allow_html=True)
 
 
-# ---------------- LOAD DATA ----------------
-@st.cache_data
-def get_data():
-    return load_and_process_data()
+# ---------------- LOAD DATA WITH ERROR BOUNDARY ----------------
+@st.cache_data(show_spinner="Loading historical event database...")
+def get_historical_data():
+    try:
+        return load_and_process_data()
+    except FileNotFoundError:
+        return None
+    except Exception as e:
+        st.error(f"Failed to load dataset: {e}")
+        return None
 
 
-data = get_data()
+data = get_historical_data()
 
 
 # ---------------- SIDEBAR ----------------
 with st.sidebar:
-
     st.markdown("## Civil Unrest")
     st.markdown("### Forecasting System")
-
     st.divider()
 
     st.markdown("**Model Information**")
-    st.write("Algorithm: XGBoost")
-    st.write("Forecast horizons: 1, 3, 7 days")
-    st.write("Dataset: CCC 2021–2024")
-
+    st.markdown("- **Algorithm**: Gradient Boosted Trees (XGBoost)")
+    st.markdown("- **Horizons**: 1, 3, and 7 Days Ahead")
+    st.markdown("- **Reference Corpus**: CCC Compiled (2021–2024)")
+    st.markdown("- **Decision Thresholds**: 0.35 (1-d), 0.25 (3-d), 0.10 (7-d)")
     st.divider()
 
-    st.caption("Academic ML project")
-    st.caption("Historical activity forecasting")
+    st.caption("Academic ML & Information Extraction Project")
+    st.caption("State-level historical activity forecasting")
 
 
 # ---------------- HEADER ----------------
-st.title("Civil Unrest Forecast Dashboard")
-
+st.title("Civil Unrest Event Forecasting Dashboard")
 st.markdown(
     '<p class="subtitle">'
-    'Historical activity-based forecasting using machine learning.'
+    'Predictive early-warning indicators of civil unrest based on historical temporal event patterns.'
     '</p>',
     unsafe_allow_html=True
 )
 
-st.divider()
+if data is None:
+    st.warning(
+        "Historical CCC dataset (`data/ccc_compiled_20212024.csv`) was not found. "
+        "Place the compiled dataset in `data/` to enable interactive historical lookups. "
+        "The model inference service remains operational via `backend.predict`."
+    )
+    st.stop()
 
 
 # ---------------- STATE AND DATE SELECTION ----------------
-st.subheader("Select Historical Data")
+with st.container(border=True):
+    st.subheader("Select Historical Region and Observation Date")
+    col1, col2 = st.columns(2)
 
-col1, col2 = st.columns(2)
+    available_states = sorted(data["state"].unique())
 
-available_states = sorted(data["state"].unique())
+    with col1:
+        selected_state = st.selectbox(
+            "Select State / Region",
+            available_states,
+            index=available_states.index("CA") if "CA" in available_states else 0
+        )
 
-with col1:
-    selected_state = st.selectbox(
-        "Select State",
-        available_states
-    )
+    state_data = data[data["state"] == selected_state].copy()
+    min_date = state_data["date"].min().date()
+    max_date = state_data["date"].max().date()
 
-state_data = data[data["state"] == selected_state].copy()
+    with col2:
+        selected_date = st.date_input(
+            "Select Observation Date",
+            value=max_date,
+            min_value=min_date,
+            max_value=max_date
+        )
 
-min_date = state_data["date"].min().date()
-max_date = state_data["date"].max().date()
-
-with col2:
-    selected_date = st.date_input(
-        "Select Date",
-        value=max_date,
-        min_value=min_date,
-        max_value=max_date
-    )
-
-# Retrieve selected state and date
-selected_row = state_data[
-    state_data["date"].dt.date == selected_date
-]
+# Retrieve selected state and date record
+selected_row = state_data[state_data["date"].dt.date == selected_date]
 
 
-# ---------------- FEATURE EXTRACTION ----------------
+# ---------------- FEATURE EXTRACTION & FORECASTING ----------------
 if not selected_row.empty:
-
     row = selected_row.iloc[0]
-
-    features = {
-        feature: float(row[feature])
-        for feature in FEATURES
-    }
-
-    st.divider()
+    features = {feat: float(row[feat]) for feat in FEATURES}
 
     st.subheader("Historical Activity Features")
-
-    st.caption(
-        "Features automatically extracted from the CCC dataset."
-    )
+    st.caption("Features extracted from historical event time-series up to observation date.")
 
     feature_cols = st.columns(4)
-
     feature_display = [
         ("Events yesterday", "lag_1"),
         ("Events 3 days ago", "lag_3"),
         ("Events 7 days ago", "lag_7"),
         ("Events 14 days ago", "lag_14"),
-        ("7-day average", "rolling_7_mean"),
-        ("7-day total", "rolling_7_sum"),
-        ("14-day average", "rolling_14_mean")
+        ("7-day rolling average", "rolling_7_mean"),
+        ("7-day total events", "rolling_7_sum"),
+        ("14-day rolling average", "rolling_14_mean")
     ]
 
     for i, (label, key) in enumerate(feature_display):
-
         with feature_cols[i % 4]:
-            st.metric(
-                label,
-                f"{features[key]:.2f}"
-            )
+            with st.container(border=True):
+                st.metric(label, f"{features[key]:.2f}")
 
-
-    # ---------------- PREDICTION ----------------
-    st.divider()
-
-    if st.button("Generate Forecast", use_container_width=True):
-
+    # Forecast generation trigger
+    st.write("")
+    if st.button("Generate Multi-Horizon Forecast", type="primary", width="stretch"):
         try:
-
             results = {
                 1: predict_unrest(features, 1),
                 3: predict_unrest(features, 3),
                 7: predict_unrest(features, 7)
             }
 
+            st.divider()
             st.subheader("Forecast Results")
-
             result_cols = st.columns(3)
 
             for col, horizon in zip(result_cols, [1, 3, 7]):
-
-                result = results[horizon]
-
+                res = results[horizon]
                 with col:
+                    with st.container(border=True):
+                        st.metric(
+                            label=f"Next {horizon} Day(s) Horizon",
+                            value=f"{res['probability'] * 100:.1f}%",
+                            delta="High Risk" if res["prediction"] == 1 else "Normal Activity"
+                        )
+                        st.progress(res["probability"])
+                        if res["prediction"] == 1:
+                            st.error(f"Unrest event expected (Threshold: {res['threshold'] * 100:.0f}%)")
+                        else:
+                            st.success(f"Below threshold (Threshold: {res['threshold'] * 100:.0f}%)")
 
-                    st.metric(
-                        label=f"Next {horizon} Day(s)",
-                        value=f"{result['probability'] * 100:.2f}%"
-                    )
-
-                    st.progress(result["probability"])
-
-                    if result["prediction"] == 1:
-                        st.success("Positive forecast signal")
-                    else:
-                        st.warning("Below forecast threshold")
-
-                    st.caption(
-                        f"Threshold: "
-                        f"{result['threshold'] * 100:.0f}%"
-                    )
-
-
-            # ---------------- ACTUAL OUTCOMES ----------------
+            # Actual Outcomes Comparison
             st.divider()
-
-            st.subheader("Actual Outcomes")
-
-            st.caption(
-                "Actual event occurrence from the historical dataset."
-            )
-
-            actual_cols = st.columns(3)
-
-            for col, horizon in zip(actual_cols, [1, 3, 7]):
-
-                actual = int(row[f"target_{horizon}day"])
-
-                with col:
-
-                    st.metric(
-                        f"Actual — {horizon} Day(s)",
-                        "Event occurred" if actual == 1 else "No event"
-                    )
-
-
-            # ---------------- COMPARISON ----------------
-            st.divider()
-
-            st.subheader("Prediction vs Actual")
+            st.subheader("Ground Truth Validation")
+            st.caption("Observed outcomes recorded in the historical dataset following this date.")
 
             comparison = []
-
             for horizon in [1, 3, 7]:
-
                 predicted = results[horizon]["prediction"]
                 actual = int(row[f"target_{horizon}day"])
-
                 comparison.append({
-                    "Forecast": f"{horizon} day(s)",
-                    "Predicted": (
-                        "Event expected"
-                        if predicted == 1
-                        else "No event expected"
-                    ),
-                    "Actual": (
-                        "Event occurred"
-                        if actual == 1
-                        else "No event"
-                    ),
-                    "Result": (
-                        "Correct"
-                        if predicted == actual
-                        else "Incorrect"
-                    )
+                    "Horizon": f"{horizon} Day(s)",
+                    "Predicted Probability": f"{results[horizon]['probability'] * 100:.1f}%",
+                    "Predicted Decision": "Event Expected" if predicted == 1 else "No Event",
+                    "Actual Outcome": "Event Occurred" if actual == 1 else "No Event",
+                    "Verification": "Match" if predicted == actual else "Mismatch"
                 })
 
             comparison_df = pd.DataFrame(comparison)
-
-            st.dataframe(
-                comparison_df,
-                use_container_width=True,
-                hide_index=True
-            )
+            st.dataframe(comparison_df, hide_index=True)
 
         except Exception as e:
-
-            st.error(f"Prediction error: {e}")
+            st.error(f"Forecast generation encountered an error: {e}")
 
 else:
-
-    st.warning("No data available for this state and date.")
+    st.info("No recorded activity available for this state and date combination.")
 
 
 # ---------------- FOOTER ----------------
 st.divider()
-
 st.caption(
-    "Research prototype | Predictions are based on historical event-count "
-    "features. Probabilities are model estimates, not certainties or causal "
-    "explanations. This interface is not validated for operational decision-making."
+    "Research Prototype | Predictions are probabilistic estimates based on state-level temporal patterns. "
+    "Designed for academic benchmarking and evaluation; not intended for operational decision-making."
 )
