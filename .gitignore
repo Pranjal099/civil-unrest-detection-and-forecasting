@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+data/*
+!data/README.md
+temp_models/
+*.pt
+*.pth
+*.pkl
+benchmark/CUT/

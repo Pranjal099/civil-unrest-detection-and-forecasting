@@ -1,0 +1,11 @@
+id,text,event_detected,confidence,event_type,event_type_confidence,locations,organizations,dates
+1,Workers protested over unpaid wages in Delhi.,True,0.9947,labor dispute,0.3313,['Delhi'],[],[]
+2,Students held a demonstration against rising tuition fees.,True,0.9851,protest,0.6667,[],[],[]
+3,Residents gathered to demand clean drinking water.,True,0.9813,demonstration,0.523,[],[],[]
+4,The cricket team won the championship yesterday.,False,0.5768,,,[],[],[]
+5,Heavy rain caused flooding in several neighborhoods.,True,0.7937,other,0.3342,[],[],[]
+6,Teachers announced a strike over salary disputes.,True,0.9956,labor dispute,0.3841,[],[],[]
+7,The government announced a new education policy.,True,0.7597,other,0.4109,[],[],[]
+8,Thousands attended a rally demanding better working conditions.,True,0.981,demonstration,0.3744,[],[],[]
+9,A music festival attracted visitors from across the city.,False,0.5425,,,[],[],[]
+10,Transport workers protested against proposed job cuts.,True,0.9919,protest,0.3418,[],[],[]
