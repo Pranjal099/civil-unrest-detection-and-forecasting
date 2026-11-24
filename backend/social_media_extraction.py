@@ -1,21 +1,13 @@
+import logging
+from typing import Any, Dict, List, Optional
 import spacy
+import torch
 from transformers import pipeline
 
-nlp = spacy.load("en_core_web_sm")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
+logger = logging.getLogger(__name__)
 
-# Stage 1: Civil unrest detection
-detector = pipeline(
-    "zero-shot-classification",
-    model="facebook/bart-large-mnli"
-)
-
-# Stage 2: Event type classification
-event_classifier = pipeline(
-    "zero-shot-classification",
-    model="facebook/bart-large-mnli"
-)
-
-EVENT_LABELS = [
+EVENT_LABELS: List[str] = [
     "protest",
     "demonstration",
     "strike",
@@ -25,27 +17,129 @@ EVENT_LABELS = [
     "other"
 ]
 
-def extract_event(text):
+CANDIDATE_DETECTION_LABELS = [
+    "text reporting civil unrest or a protest event",
+    "unrelated news or general discussion"
+]
 
-    # Stage 1: Binary classification
+# Shared pipeline caches
+_nlp = None
+_detector = None
+_classifier = None
+
+
+def get_device() -> str:
+    """Detect and return optimal compute accelerator device."""
+    if torch.cuda.is_available():
+        return "cuda"
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
+def get_nlp():
+    """Lazily load and cache SpaCy linguistic model."""
+    global _nlp
+    if _nlp is None:
+        try:
+            _nlp = spacy.load("en_core_web_sm")
+        except OSError:
+            logger.warning("en_core_web_sm not found, downloading...")
+            from spacy.cli import download
+            download("en_core_web_sm")
+            _nlp = spacy.load("en_core_web_sm")
+    return _nlp
+
+
+def get_detector():
+    """Lazily load and cache zero-shot civil unrest binary detector."""
+    global _detector
+    if _detector is None:
+        device = get_device()
+        logger.info("Initializing zero-shot unrest detector on device: %s", device)
+        device_arg = 0 if device == "cuda" else (device if device == "mps" else -1)
+        _detector = pipeline(
+            "zero-shot-classification",
+            model="facebook/bart-large-mnli",
+            device=device_arg
+        )
+    return _detector
+
+
+def get_classifier():
+    """Lazily load and cache zero-shot event typology classifier."""
+    global _classifier
+    if _classifier is None:
+        device = get_device()
+        logger.info("Initializing zero-shot typology classifier on device: %s", device)
+        device_arg = 0 if device == "cuda" else (device if device == "mps" else -1)
+        _classifier = pipeline(
+            "zero-shot-classification",
+            model="facebook/bart-large-mnli",
+            device=device_arg
+        )
+    return _classifier
+
+
+def extract_event(
+    text: Any,
+    threshold: float = 0.70,
+    detector_pipeline=None,
+    classifier_pipeline=None,
+    nlp_model=None
+) -> Dict[str, Any]:
+    """
+    Extract civil unrest signals, classify event category, and extract entities.
+
+    Parameters
+    ----------
+    text : str
+        Input social media post or headline text.
+    threshold : float, default 0.70
+        Confidence score threshold required for positive unrest detection.
+    detector_pipeline : optional
+        Override for binary detection pipeline (useful for testing).
+    classifier_pipeline : optional
+        Override for event typology classification pipeline.
+    nlp_model : optional
+        Override for SpaCy NER pipeline.
+
+    Returns
+    -------
+    dict
+        Structured extraction results with event detection flag, category,
+        confidence scores, and extracted entity lists (locations, orgs, dates).
+    """
+    # Defensive input sanitization
+    if text is None or not isinstance(text, str) or not text.strip():
+        return {
+            "text": "" if text is None else str(text),
+            "event_detected": False,
+            "confidence": 0.0,
+            "event_type": None,
+            "locations": [],
+            "organizations": [],
+            "dates": []
+        }
+
+    clean_text = text.strip()
+    detector = detector_pipeline if detector_pipeline is not None else get_detector()
+
+    # Stage 1: Binary unrest classification
     detection = detector(
-        text,
-        candidate_labels=[
-            "text reporting civil unrest or a protest event",
-            "unrelated news or general discussion"
-        ]
+        clean_text,
+        candidate_labels=CANDIDATE_DETECTION_LABELS
     )
 
     detected_label = detection["labels"][0]
     detection_score = float(detection["scores"][0])
 
-    # Conservative filtering threshold (needs validation)
     if (
         detected_label != "text reporting civil unrest or a protest event"
-        or detection_score < 0.70
+        or detection_score < threshold
     ):
         return {
-            "text": text,
+            "text": clean_text,
             "event_detected": False,
             "confidence": round(detection_score, 4),
             "event_type": None,
@@ -54,40 +148,36 @@ def extract_event(text):
             "dates": []
         }
 
-    # Stage 2: Event type classification
-    event_result = event_classifier(
-        text,
-        candidate_labels=EVENT_LABELS
-    )
+    # Stage 2: Event typology classification & Named Entity Recognition
+    classifier = classifier_pipeline if classifier_pipeline is not None else get_classifier()
+    nlp = nlp_model if nlp_model is not None else get_nlp()
 
-    doc = nlp(text)
+    event_result = classifier(clean_text, candidate_labels=EVENT_LABELS)
+    doc = nlp(clean_text)
 
     return {
-        "text": text,
+        "text": clean_text,
         "event_detected": True,
         "confidence": round(detection_score, 4),
         "event_type": event_result["labels"][0],
-        "event_type_confidence": round(
-            float(event_result["scores"][0]), 4
-        ),
-        "locations": list(set(
+        "event_type_confidence": round(float(event_result["scores"][0]), 4),
+        "locations": sorted(list(set(
             ent.text for ent in doc.ents
             if ent.label_ in ["GPE", "LOC"]
-        )),
-        "organizations": list(set(
+        ))),
+        "organizations": sorted(list(set(
             ent.text for ent in doc.ents
             if ent.label_ == "ORG"
-        )),
-        "dates": list(set(
+        ))),
+        "dates": sorted(list(set(
             ent.text for ent in doc.ents
             if ent.label_ in ["DATE", "TIME"]
-        ))
+        )))
     }
 
 
 if __name__ == "__main__":
-
-    texts = [
+    sample_texts = [
         "Workers protested in Delhi on Monday over unpaid wages.",
         "Students organized a march in Kolkata against rising tuition fees.",
         "India won the cricket match yesterday.",
@@ -95,5 +185,5 @@ if __name__ == "__main__":
         "Thousands gathered to demand better working conditions."
     ]
 
-    for text in texts:
-        print("\n", extract_event(text))
+    for t in sample_texts:
+        print("\n", extract_event(t))
