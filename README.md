@@ -6,11 +6,14 @@ A dual-tier machine learning system for extracting civil unrest events from unst
 
 ## 1. System Overview
 
-This project bridges unstructured NLP event extraction and structured time-series forecasting:
+This project comprises two distinct, complementary machine learning subsystems designed to study civil unrest:
 
-1. **Unstructured NLP Extraction**: Extracts unrest mentions, classifies 7 event categories (*protest, demonstration, strike, riot, labor dispute, political unrest, other*), and extracts named entities (locations, organizations, dates) from streaming tweets, social posts, and news RSS feeds using zero-shot classification (BART Large MNLI) and SpaCy NER.
-2. **Structured Time-Series Forecasting**: Aggregates event observations into daily state-level counts across all 50 US states and DC from the Crowd Counting Consortium (CCC) dataset (2021–2024), constructs historical lag and rolling statistical features, and forecasts positive unrest incidence across **1-day**, **3-day**, and **7-day** future horizons using calibrated XGBoost classifiers.
+1. **Unstructured NLP Extraction Pipeline**: Extracts unrest mentions, classifies 7 event categories (*protest, demonstration, strike, riot, labor dispute, political unrest, other*), and extracts named entities (locations, organizations, dates) from streaming tweets, social posts, and news RSS feeds using zero-shot classification (BART Large MNLI) and SpaCy NER.
+2. **Structured Time-Series Forecasting Pipeline**: Aggregates event observations into daily state-level counts across all 50 US states and DC from the Crowd Counting Consortium (CCC) dataset (2021–2024), constructs historical lag and rolling statistical features, and forecasts positive unrest incidence across **1-day**, **3-day**, and **7-day** future horizons using calibrated XGBoost classifiers.
 3. **Interactive Dashboard**: A modern Streamlit application providing region-based historical exploration, feature visualization, multi-horizon probabilistic risk gauges, and ground-truth validation.
+
+> [!NOTE]
+> **Subsystem Relationship**: The NLP event extraction and time-series forecasting pipelines are distinct, modular components. The NLP pipeline processes unstructured text (e.g., Google News RSS feeds, Farmers' protest tweets), while the predictive models are trained on structured historical event registries (Crowd Counting Consortium). They are evaluated independently and are not connected as a single end-to-end streaming feedback loop.
 
 ```mermaid
 flowchart TD
@@ -199,6 +202,10 @@ python backend/train.py --output-dir temp_models/my_run
 
 ---
 
-## 8. Disclaimer & Academic Context
+## 8. Limitations & Methodological Constraints
 
-This repository is an academic research prototype. Predictions represent model-derived probabilistic risk indicators based on historical time-series signals and do not represent deterministic forecasts or operational security guidance.
+1. **Subsystem Decoupling**: The NLP event extraction pipeline (processing Twitter and Google News RSS feeds) and the state-level time-series forecasting models (trained on Crowd Counting Consortium event registries) operate as independent research modules. Event extractions are evaluated on domain-specific case studies and are not dynamically integrated into the XGBoost time-series feature matrix in real time.
+2. **Geographic & Source Granularity**: The multi-horizon predictive models operate exclusively on US state-level aggregates from the Crowd Counting Consortium (2021–2024). International protest case studies (e.g., Nepal, Bangladesh, India) are evaluated through the NLP extraction subsystem.
+3. **Data Exclusions**: Large raw datasets (such as the 1.3 GB tweet archive and 113 MB CCC CSV) are omitted from version control in accordance with data distribution policies and repository size best practices. Replicators must obtain raw files separately as documented in [`data/README.md`](data/README.md).
+4. **Probabilistic Risk vs. Causality**: Forecasts represent empirical probability estimates derived from historical temporal momentum (lags and rolling statistics). They do not model root sociopolitical drivers, policy dynamics, or sudden exogenous shocks.
+5. **Operational Disclaimer**: This repository is an academic research prototype intended for benchmarking and methodology exploration. It is not designed, calibrated, or validated for operational law enforcement, military, or tactical security decision-making.
