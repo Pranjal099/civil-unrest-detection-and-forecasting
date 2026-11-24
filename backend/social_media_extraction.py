@@ -1,8 +1,5 @@
 import logging
 from typing import Any, Dict, List, Optional
-import spacy
-import torch
-from transformers import pipeline
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -30,10 +27,14 @@ _classifier = None
 
 def get_device() -> str:
     """Detect and return optimal compute accelerator device."""
-    if torch.cuda.is_available():
-        return "cuda"
-    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-        return "mps"
+    try:
+        import torch
+        if torch.cuda.is_available():
+            return "cuda"
+        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return "mps"
+    except ImportError:
+        pass
     return "cpu"
 
 
@@ -41,6 +42,7 @@ def get_nlp():
     """Lazily load and cache SpaCy linguistic model."""
     global _nlp
     if _nlp is None:
+        import spacy
         try:
             _nlp = spacy.load("en_core_web_sm")
         except OSError:
@@ -55,6 +57,7 @@ def get_detector():
     """Lazily load and cache zero-shot civil unrest binary detector."""
     global _detector
     if _detector is None:
+        from transformers import pipeline
         device = get_device()
         logger.info("Initializing zero-shot unrest detector on device: %s", device)
         device_arg = 0 if device == "cuda" else (device if device == "mps" else -1)
@@ -70,6 +73,7 @@ def get_classifier():
     """Lazily load and cache zero-shot event typology classifier."""
     global _classifier
     if _classifier is None:
+        from transformers import pipeline
         device = get_device()
         logger.info("Initializing zero-shot typology classifier on device: %s", device)
         device_arg = 0 if device == "cuda" else (device if device == "mps" else -1)
