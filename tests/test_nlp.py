@@ -104,6 +104,52 @@ def test_extract_event_positive_with_mocks():
     assert res["locations"] == ["Paris"]
     assert res["organizations"] == ["CGT Union"]
     assert res["dates"] == ["Tuesday"]
+    assert "CGT Union" in res["actors"]
+    assert res["trigger_phrase"] is not None
+    assert isinstance(res["escalation_indicators"], list)
+    assert "strike" in res["escalation_indicators"]
+    assert isinstance(res["mobilization_call"], bool)
+
+
+def test_extract_event_metadata_passthrough():
+    res = extract_event(
+        None,
+        source="twitter",
+        timestamp="2021-02-05T12:00:00Z"
+    )
+    assert res["source"] == "twitter"
+    assert res["timestamp"] == "2021-02-05T12:00:00Z"
+
+
+def test_extract_event_escalation_and_mobilization():
+    mock_detector = MagicMock(return_value={
+        "labels": ["text reporting civil unrest or a protest event", "unrelated news"],
+        "scores": [0.88, 0.12]
+    })
+    mock_classifier = MagicMock(return_value={
+        "labels": ["protest", "strike"],
+        "scores": [0.80, 0.20]
+    })
+
+    class MockDoc:
+        def __init__(self, text):
+            self.ents = []
+            self.text = text
+
+    mock_nlp = MagicMock(side_effect=lambda text: MockDoc(text))
+
+    text = "Join us at the border! Police used teargas and lathi charge after violent clash."
+    res = extract_event(
+        text,
+        detector_pipeline=mock_detector,
+        classifier_pipeline=mock_classifier,
+        nlp_model=mock_nlp
+    )
+    assert res["event_detected"] is True
+    assert res["mobilization_call"] is True
+    assert "teargas" in res["escalation_indicators"]
+    assert "clash" in res["escalation_indicators"]
+    assert "lathi" in res["escalation_indicators"]
 
 
 def test_event_labels_completeness():
