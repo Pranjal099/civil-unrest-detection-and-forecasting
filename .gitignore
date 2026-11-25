@@ -10,8 +10,15 @@ __pycache__/
 *.log
 data/*
 !data/README.md
+!data/demo_social_posts.csv
+!data/annotation_benchmark.csv
+!data/protest_articles.csv
+!data/cleaned_protest_articles.csv
+!data/final_protest_articles.csv
 temp_models/
 *.pt
 *.pth
 *.pkl
+*.zip
+.agents/
 benchmark/CUT/

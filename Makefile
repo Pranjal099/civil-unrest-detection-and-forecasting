@@ -1,4 +1,4 @@
-.PHONY: help install test dashboard evaluate clean lint
+.PHONY: help install test dashboard evaluate case-study benchmark clean lint
 
 VENV ?= .venv
 PYTHON ?= $(if $(wildcard $(VENV)/bin/python),$(VENV)/bin/python,python3)
@@ -26,6 +26,12 @@ dashboard:
 
 evaluate:
 	PYTHONPATH=. $(PYTHON) backend/evaluate_dataset.py
+
+case-study:
+	PYTHONPATH=. $(PYTHON) backend/case_study.py
+
+benchmark:
+	PYTHONPATH=. $(PYTHON) backend/nlp_evaluation.py --predictions data/annotation_benchmark.csv
 
 clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
