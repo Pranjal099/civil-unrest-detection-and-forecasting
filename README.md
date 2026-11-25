@@ -69,60 +69,73 @@ Compared to the JHU-CUT Twitter benchmark (*Alexandra DeLucia et al., EMNLP 2020
 
 ```
 civil-unrest-forecasting/
-├── app.py                      # Interactive Streamlit forecast dashboard
-├── requirements.txt            # Locked project dependencies
-├── Makefile                    # Developer task automation
-├── pytest.ini                  # Pytest configuration and testpaths
-├── pyproject.toml              # Project packaging configuration
+├── app.py                         # 5-tab interactive Streamlit forecast dashboard
+├── requirements.txt               # Locked project dependencies
+├── Makefile                       # Developer task automation
+├── pytest.ini                     # Pytest configuration and testpaths
+├── pyproject.toml                 # Project packaging configuration
 │
-├── backend/                    # Core Python application package
+├── PROJECT_AUDIT.md               # Requirement-to-implementation trace matrix
+├── ARCHITECTURE.md                # System specifications and architectural diagram
+├── DATASET_DOCUMENTATION.md       # Corpus provenance, stats, and class distributions
+├── RESULTS.md                     # Comprehensive multi-horizon and case study benchmarks
+├── FACULTY_DEMO_GUIDE.md          # 8-10 minute presentation guide and oral defense script
+├── TWO_PAGE_PROGRESS_REPORT.md    # 2-page concise progress summary for faculty
+├── VERIFICATION_REPORT.md         # Independent verification audit report
+│
+├── backend/                       # Core Python application package
 │   ├── __init__.py
-│   ├── data_processing.py      # CCC calendar multi-indexing & feature engineering
-│   ├── predict.py              # Single & batch XGBoost inference engine
-│   ├── train.py                # Standalone reproducible XGBoost training pipeline
-│   ├── evaluation.py           # Metric calculation (PR-AUC, F1, Balanced Accuracy)
-│   ├── evaluate_dataset.py     # 2024 test evaluation runner
-│   ├── social_media_extraction.py # Zero-shot classification & SpaCy NER
-│   ├── collect_protests.py     # Google News RSS harvester
-│   ├── clean_protest_data.py   # Keyword & relevance filtering
-│   ├── filter_event_periods.py # Temporal window filtering
-│   ├── analyze_protest_timeline.py # Protest temporal analysis
+│   ├── data_processing.py         # CCC calendar multi-indexing & feature engineering
+│   ├── predict.py                 # Multi-horizon XGBoost inference engine
+│   ├── train.py                   # Standalone reproducible XGBoost training pipeline
+│   ├── evaluation.py              # Metric calculation (PR-AUC, F1, Precision, Recall)
+│   ├── evaluate_dataset.py        # 2024 test evaluation runner
+│   ├── social_media_extraction.py # NLP zero-shot classification, argument parsing & escalation
+│   ├── social_media_features.py   # Daily social feature aggregation & temporal rolling
+│   ├── integration_pipeline.py    # End-to-end multimodal demo ingestion pipeline
+│   ├── case_study.py              # Comparative experiment: Lag-only vs Lag+NLP features
+│   ├── nlp_evaluation.py          # Benchmark evaluator against human annotations
+│   ├── collect_protests.py        # Google News RSS harvester
+│   ├── clean_protest_data.py      # Keyword & relevance filtering
+│   ├── filter_event_periods.py    # Temporal window filtering
+│   ├── analyze_protest_timeline.py# Protest temporal analysis
 │   ├── process_farmers_tweets.py  # Streaming 10k-chunk JSON tweet parser
 │   └── clean_farmers_tweets.py    # Tweet normalization & deduplication
 │
-├── models/                     # Persisted model binaries & metadata
-│   ├── metadata.json           # Features, calibrated thresholds, and hyperparameters
-│   ├── xgboost_1day.json       # 1-day forecast model
-│   ├── xgboost_3day.json       # 3-day forecast model
-│   └── xgboost_7day.json       # 7-day forecast model
+├── docs/                          # Methodology & guidelines
+│   └── ANNOTATION_GUIDELINES.md   # Explicit human annotation criteria & schema
 │
-├── data/                       # Curated sample data & data documentation
-│   ├── README.md               # Dataset schemas and acquisition guide
-│   ├── demo_social_posts.csv   # 10 sample posts for pipeline smoke tests
-│   ├── protest_articles.csv    # Harvested protest news headlines
+├── models/                        # Persisted model binaries & metadata
+│   ├── metadata.json              # Features, calibrated thresholds, and hyperparameters
+│   ├── xgboost_1day.json          # 1-day forecast model (threshold: 0.35)
+│   ├── xgboost_3day.json          # 3-day forecast model (threshold: 0.25)
+│   └── xgboost_7day.json          # 7-day forecast model (threshold: 0.10)
+│
+├── data/                          # Curated sample data & benchmarks
+│   ├── README.md                  # Dataset schemas and acquisition guide
+│   ├── demo_social_posts.csv      # 10 sample posts for pipeline smoke tests
+│   ├── annotation_benchmark.csv   # 200 stratified tweets with human/model annotation fields
+│   ├── protest_articles.csv       # Harvested protest news headlines
 │   ├── cleaned_protest_articles.csv # Cleaned protest articles
-│   └── final_protest_articles.csv   # Window-filtered protest articles
+│   └── final_protest_articles.csv # Window-filtered protest articles
 │
-├── results/                    # Benchmark metrics & case study extractions
-│   ├── README.md               # Result catalog and evaluation documentation
-│   ├── final_results.csv       # 2024 test metrics across horizons
-│   ├── demo_extracted_events.csv # Extraction outputs for demo posts
-│   ├── final_protest_extractions.csv # Extraction outputs for protest articles
-│   └── protest_timeline.csv    # Aggregated protest frequency timeline
+├── results/                       # Benchmark metrics & case study extractions
+│   ├── README.md                  # Result catalog and evaluation documentation
+│   ├── final_results.csv          # 2024 test metrics across horizons
+│   ├── case_study_results.json    # India Farmers' Protest comparative experiment metrics
+│   ├── benchmark_model_predictions.csv # NLP predictions across 200 benchmark posts
+│   ├── farmers_protest_sample_extractions.csv # 870 structured extractions across 58 days
+│   ├── demo_extracted_events.csv  # Extraction outputs for demo posts
+│   └── final_protest_extractions.csv # Extraction outputs for protest articles
 │
-├── benchmark/                  # Comparative baseline documentation
-│   └── README.md               # JHU-CUT baseline comparison
-│
-├── notebooks/                  # Research & exploration notebooks
-│   └── Untitled74-2.ipynb      # Original model exploration and training
-│
-└── tests/                      # Automated test suite (40 unit tests)
-    ├── test_data_processing.py # Feature calculation, lag math, and leakage tests
-    ├── test_predict.py         # Model loading, boundary, and batch inference tests
-    ├── test_train.py           # Split logic and dry-run training tests
-    ├── test_evaluation.py      # Classification metrics and zero-division tests
-    ├── test_nlp.py             # Input sanitization and extraction logic tests
-    └── test_dashboard.py       # Streamlit compilation and execution flow tests
+└── tests/                         # Automated test suite (47 unit & integration tests)
+    ├── test_data_processing.py    # Feature calculation, lag math, and leakage tests
+    ├── test_predict.py            # Model loading, boundary, and batch inference tests
+    ├── test_train.py              # Split logic and dry-run training tests
+    ├── test_evaluation.py         # Classification metrics and zero-division tests
+    ├── test_nlp.py                # NLP argument extraction, escalation, and sanitization tests
+    ├── test_integration.py        # Social media features and case study pipeline tests
+    └── test_dashboard.py          # Streamlit 5-tab compilation and execution flow tests
 ```
 
 ---
@@ -138,12 +151,10 @@ Clone the repository and install dependencies:
 
 ```bash
 # Clone repository
-git clone <repo-url>
-cd civil-unrest-forecasting
+git clone https://github.com/Pranjal099/civil-unrest-detection-and-forecasting.git
+cd civil-unrest-detection-and-forecasting
 
 # Install dependencies and download SpaCy language model
-make install
-# Or manually:
 pip install -r requirements.txt
 python -m spacy download en_core_web_sm
 ```
@@ -152,60 +163,49 @@ python -m spacy download en_core_web_sm
 
 ## 5. Running the Test Suite
 
-The project includes an extensive test suite (40 unit tests) covering temporal feature calculations, no-lookahead leakage guarantees, model inference, training dry-runs, and NLP pipeline sanitization:
+The project includes an extensive test suite (**47 passing automated tests**) covering temporal feature calculations, no-lookahead leakage guarantees, model inference, training dry-runs, NLP argument extraction, and multimodal integration:
 
 ```bash
-# Run complete test suite
-make test
-# Or directly via pytest:
-pytest
+# Run complete test suite (all 47 tests pass in ~12 seconds)
+PYTHONPATH=. pytest tests/ -v
 ```
 
 ---
 
-## 6. Launching the Forecast Dashboard
+## 6. Launching the 5-Tab Faculty Demonstration Dashboard
 
-Run the Streamlit application to explore historical event patterns and generate real-time forecasts:
+Launch the interactive Streamlit application to explore event extractions, historical state predictions, and comparative case studies:
 
 ```bash
-make dashboard
-# Or directly via Streamlit:
 streamlit run app.py
 ```
 
-* **Region Selector**: Choose from all 50 US States + DC.
-* **Observation Date**: Select any calendar date from 2021 to 2024.
-* **Feature Display**: Inspect automatically computed 1, 3, 7, and 14-day lags alongside rolling statistics.
-* **Generate Forecast**: Computes risk probabilities for 1-day, 3-day, and 7-day windows and evaluates against ground truth.
+The application provides five distinct tabs:
+1. **🔍 NLP Event Extraction:** Interactive text field and batch demo runner extracting triggers, actors, targets, scale, and escalation indicators from social text.
+2. **📅 Temporal Event Browser:** Visualizes daily tweet volume, event typologies, and escalation frequency across the 58-day Farmers' Protest dataset.
+3. **📈 CCC Forecasting (Baseline):** State-level historical lookups across 54 US states and live multi-horizon (1d, 3d, 7d) XGBoost predictions validated against ground truth.
+4. **🔗 Integration Case Study:** Side-by-side comparative evaluation of Model A (Lag-only) vs Model B (Multimodal Integrated) on a continuous protest timeline.
+5. **📊 Model Evaluation & Metrics:** Comprehensive PR-AUC, F1, precision, recall, and confusion matrix displays across all three horizons.
 
 ---
 
-## 7. Model Training & Evaluation Replication
+## 7. Four-Member Team Contribution Plan
 
-### Reproduce 2024 Test Set Evaluation
-```bash
-make evaluate
-# Or:
-python backend/evaluate_dataset.py
-```
+This project is architected for collaborative academic development across four distinct specializations:
 
-### Run Model Training Pipeline (Dry Run)
-The training pipeline supports chronological data splitting, class imbalance weighting (`scale_pos_weight`), and threshold calibration:
-
-```bash
-# Verify split shapes and prevalence without overwriting production models:
-python backend/train.py --dry-run
-
-# Train and output to a separate directory:
-python backend/train.py --output-dir temp_models/my_run
-```
+| Member Role | Primary Responsibilities | Key Deliverables & Code Modules |
+|---|---|---|
+| **Member 1: Lead NLP Engineer** | Zero-shot unrest detection, event typology classification, spaCy argument parsing (actors, triggers, targets, crowd scale), and lexical escalation detection. | `backend/social_media_extraction.py`, `tests/test_nlp.py` |
+| **Member 2: Data Annotation & Evaluation Lead** | Stratified sampling of 200 benchmark posts, authoring annotation guidelines, gold standard verification, and benchmark evaluation scripts. | `data/annotation_benchmark.csv`, `docs/ANNOTATION_GUIDELINES.md`, `backend/nlp_evaluation.py` |
+| **Member 3: Time-Series & Forecasting Lead** | Calendar multi-indexing, non-leaking lag and rolling feature engineering, multi-horizon XGBoost training, and test set metric verification. | `backend/data_processing.py`, `backend/train.py`, `backend/predict.py`, `tests/test_data_processing.py`, `tests/test_predict.py` |
+| **Member 4: Systems Integration & Dashboard Lead** | Multimodal feature engineering, continuous timeline aggregation, comparative case study experiment, and the 5-tab interactive Streamlit dashboard. | `backend/social_media_features.py`, `backend/integration_pipeline.py`, `backend/case_study.py`, `app.py`, `tests/test_integration.py` |
 
 ---
 
 ## 8. Limitations & Methodological Constraints
 
-1. **Subsystem Decoupling**: The NLP event extraction pipeline (processing Twitter and Google News RSS feeds) and the state-level time-series forecasting models (trained on Crowd Counting Consortium event registries) operate as independent research modules. Event extractions are evaluated on domain-specific case studies and are not dynamically integrated into the XGBoost time-series feature matrix in real time.
-2. **Geographic & Source Granularity**: The multi-horizon predictive models operate exclusively on US state-level aggregates from the Crowd Counting Consortium (2021–2024). International protest case studies (e.g., Nepal, Bangladesh, India) are evaluated through the NLP extraction subsystem.
-3. **Data Exclusions**: Large raw datasets (such as the 1.3 GB tweet archive and 113 MB CCC CSV) are omitted from version control in accordance with data distribution policies and repository size best practices. Replicators must obtain raw files separately as documented in [`data/README.md`](data/README.md).
-4. **Probabilistic Risk vs. Causality**: Forecasts represent empirical probability estimates derived from historical temporal momentum (lags and rolling statistics). They do not model root sociopolitical drivers, policy dynamics, or sudden exogenous shocks.
-5. **Operational Disclaimer**: This repository is an academic research prototype intended for benchmarking and methodology exploration. It is not designed, calibrated, or validated for operational law enforcement, military, or tactical security decision-making.
+1. **Subsystem Decoupling:** The NLP event extraction pipeline (processing Twitter and Google News RSS feeds) and the state-level time-series forecasting models (trained on Crowd Counting Consortium event registries) operate as independent research modules. Event extractions are evaluated on domain-specific case studies and are not dynamically integrated into the US CCC XGBoost time-series feature matrix in real time.
+2. **Geographic & Source Granularity:** The multi-horizon predictive models operate exclusively on US state-level aggregates from the Crowd Counting Consortium (2021–2024). International protest case studies (India Farmers' Protest) are evaluated through the NLP extraction and case study subsystem.
+3. **Data Exclusions:** Large raw datasets (such as the 1.3 GB tweet archive and 113 MB CCC CSV) are omitted from version control in accordance with data distribution policies and repository size best practices. Replicators must obtain raw files separately as documented in [`data/README.md`](data/README.md).
+4. **Probabilistic Risk vs. Causality:** Forecasts represent empirical probability estimates derived from historical temporal momentum (lags and rolling statistics). They do not model root sociopolitical drivers, policy dynamics, or sudden exogenous shocks.
+5. **Operational Disclaimer:** This repository is an academic research prototype intended for benchmarking and methodology exploration. It is not designed, calibrated, or validated for operational law enforcement, military, or tactical security decision-making.
